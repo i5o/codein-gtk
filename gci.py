@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 
+import gi
+gi.require_version('Gtk', '3.0')
+
 from gi.repository import Gtk
-from widgets import Header, Button
+from widgets import Header, Button, WindowWithHeader
 
 
-class Window(Gtk.Window):
+class Window(WindowWithHeader):
 
     def __init__(self):
-        Gtk.Window.__init__(self)
+        WindowWithHeader.__init__(self, "GCI 2016 Tasks")
 
         self.content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
 
-        title_bar = Header("GCI 2016 Tasks")
-        title_bar.add(Button("list-add", "Add task"))
-        self.set_titlebar(title_bar)
+        self.title_bar.add(Button("list-add", "Add task"))
 
         self.add(self.content)
         self.set_resizable(False)

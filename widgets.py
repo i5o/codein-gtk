@@ -1,7 +1,19 @@
 #!/usr/bin/env python
+import gi
+gi.require_version('Gtk', '3.0')
 
 from gi.repository import Gio
 from gi.repository import Gtk
+
+
+class WindowWithHeader(Gtk.Window):
+
+    def __init__(self, title):
+        Gtk.Window.__init__(self)
+
+        self.title_bar = Header(title)
+        self.set_titlebar(self.title_bar)
+        self.show_all()
 
 
 class Header(Gtk.HeaderBar):
