@@ -6,11 +6,11 @@ from gi.repository import Gtk
 
 class Header(Gtk.HeaderBar):
 
-    def __init__(self):
+    def __init__(self, title):
         Gtk.HeaderBar.__init__(self)
 
         self.set_show_close_button(True)
-        self.set_title("GCI 2016 Tasks")
+        self.set_title(title)
 
 
 class Button(Gtk.Button):

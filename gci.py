@@ -11,7 +11,7 @@ class Window(Gtk.Window):
 
         self.content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
 
-        title_bar = Header()
+        title_bar = Header("GCI 2016 Tasks")
         title_bar.add(Button("list-add", "Add task"))
         self.set_titlebar(title_bar)
 
