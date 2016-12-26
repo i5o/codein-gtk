@@ -5,6 +5,7 @@ gi.require_version('Gtk', '3.0')
 
 from gi.repository import Gtk
 from widgets import Header, Button, WindowWithHeader
+from taskinterface import NewTaskWindow
 
 
 class Window(WindowWithHeader):
@@ -14,14 +15,19 @@ class Window(WindowWithHeader):
 
         self.content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
 
-        self.title_bar.add(Button("list-add", "Add task"))
+        add_task_button = Button("list-add", "Add task")
+        add_task_button.connect("clicked", self._add_task)
+        self.title_bar.add(add_task_button)
 
         self.add(self.content)
         self.set_resizable(False)
         self.set_size_request(1024, 768)
         self.connect("delete-event", Gtk.main_quit)
+        self.set_position(Gtk.WindowPosition.CENTER_ALWAYS)
         self.show_all()
 
+    def _add_task(self, button):
+        NewTaskWindow(self)
 
 if __name__ == "__main__":
     Window()
