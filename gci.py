@@ -4,7 +4,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 
 from gi.repository import Gtk
-from widgets import Header, Button, WindowWithHeader
+from widgets import Button, WindowWithHeader, TasksList, ScrolledWindow
 from taskinterface import NewTaskWindow
 
 
@@ -19,7 +19,10 @@ class Window(WindowWithHeader):
         add_task_button.connect("clicked", self._add_task)
         self.title_bar.add(add_task_button)
 
-        self.add(self.content)
+        tasks = TasksList()
+        self.content.pack_end(tasks, True, True, 0)
+
+        self.add(ScrolledWindow(self.content))
         self.set_resizable(False)
         self.set_size_request(1024, 768)
         self.connect("delete-event", Gtk.main_quit)
@@ -28,6 +31,7 @@ class Window(WindowWithHeader):
 
     def _add_task(self, button):
         NewTaskWindow(self)
+
 
 if __name__ == "__main__":
     Window()
