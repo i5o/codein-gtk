@@ -176,11 +176,18 @@ class TaskInterface(Gtk.Box):
         header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         header.pack_start(organization_label, False, False, 0)
         header.pack_end(
-            Icon(
-                days=test_task["time_to_complete_in_days"]),
+            Icon(days=test_task["time_to_complete_in_days"]),
             False,
             False,
             5)
+
+        icon = Icon(tags=test_task["tags"])
+        if not icon.is_none:
+            header.pack_end(icon, False, False, 5)
+
+        icon = Icon(beginner=test_task["is_beginner"])
+        if not icon.is_none:
+            header.pack_end(icon, False, False, 5)
 
         for cat in test_task["categories"]:
             header.pack_end(Icon(category=cat), False, False, 5)
@@ -204,22 +211,46 @@ class ScrolledWindow(Gtk.ScrolledWindow):
 
 class Icon(Gtk.EventBox):
 
-    def __init__(self, category=None, scale=24, days=0):
+    def __init__(
+            self,
+            category=None,
+            scale=24,
+            days=0,
+            tags=None,
+            beginner=False):
         Gtk.EventBox.__init__(self)
 
+        self.is_none = False
         img = Gtk.Image()
+        path = None
+
         if category:
             path = TAGS[category][0]
             Tooltip(self, TAGS[category][1])
         elif days > 1:
             path = "img/time.svg"
             Tooltip(self, "%d days" % days)
-        else:
-            return "Error."
+        elif tags:
+            path = "img/tags.svg"
+            text = "Tags:\n"
+            for tag in tags:
+                text += "  %s\n" % tag
 
-        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-            path, scale, scale, True)
-        img.set_from_pixbuf(pixbuf)
+            if text.endswith("\n"):
+                text = text[:-1]
+
+            Tooltip(self, text)
+        elif beginner:
+            path = "img/beginner.svg"
+            Tooltip(self, "Beginner task")
+
+        if path:
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                path, scale, scale, True)
+            img.set_from_pixbuf(pixbuf)
+        else:
+            self.is_none = True
+
         self.add(img)
         self.show_all()
 
