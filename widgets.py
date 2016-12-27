@@ -2,6 +2,7 @@
 
 import gi
 import json
+import webbrowser
 gi.require_version('Gtk', '3.0')
 
 from gi.repository import Gio
@@ -123,7 +124,7 @@ class TasksList(Gtk.ListBox):
         f = open("tasks.json", "r")
         tasks = json.load(f)['results']
         f.close()
-        self.limit += 25
+        self.limit += 50
         self.total_tasks = len(tasks)
 
         for task in tasks:
@@ -149,9 +150,11 @@ class TaskInterface(Gtk.Box):
     def __init__(self, test_task):
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
-        organization_label = Gtk.Label(
+        organization_label = Gtk.Label()
+        organization_label.set_text("<b>%s</b>" %
             organizations[
                 test_task["organization_id"]].upper())
+        organization_label.set_use_markup(True)
         organization_label.set_size_request(400, 30)
         organization_label.set_xalign(0)
         organization_label.props.margin_left = 5
@@ -185,16 +188,26 @@ class TaskInterface(Gtk.Box):
         if not icon.is_none:
             header.pack_end(icon, False, False, 5)
 
+        icon = Icon(tags=test_task)
+
         icon = Icon(beginner=test_task["is_beginner"])
         if not icon.is_none:
             header.pack_end(icon, False, False, 5)
 
+        subheader = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        subheader.pack_start(task_name, False, False, 0)
         for cat in test_task["categories"]:
-            header.pack_end(Icon(category=cat), False, False, 5)
+            subheader.pack_end(Icon(category=cat), False, False, 5)
 
+        subsubheader = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        subsubheader.pack_start(task_description_expander, True, True, 0)
+
+        icon = Icon(url=test_task["external_url"])
+        if not icon.is_none:
+            subsubheader.pack_end(icon, False, False, 5)
         self.pack_start(header, False, False, 0)
-        self.pack_start(task_name, False, False, 0)
-        self.pack_end(task_description_expander, True, True, 10)
+        self.pack_start(subheader, False, False, 0)
+        self.pack_end(subsubheader, True, True, 10)
 
         self.show_all()
 
@@ -217,7 +230,9 @@ class Icon(Gtk.EventBox):
             scale=24,
             days=0,
             tags=None,
-            beginner=False):
+            beginner=False,
+            mentors=None,
+            url=None):
         Gtk.EventBox.__init__(self)
 
         self.is_none = False
@@ -243,6 +258,21 @@ class Icon(Gtk.EventBox):
         elif beginner:
             path = "img/beginner.svg"
             Tooltip(self, "Beginner task")
+        elif mentors:
+            path = "img/mentors.svg"
+            text = "Mentors:\n"
+            for mentor in mentors:
+                text += "  %s\n" % tag
+
+            if text.endswith("\n"):
+                text = text[:-1]
+
+            Tooltip(self, text)
+        elif url:
+            path = "img/link.svg"
+            text = "External URL (double click to open):\n%s" % url
+            self.connect("button-press-event", self._openlink, url)
+            Tooltip(self, text)
 
         if path:
             pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
@@ -254,6 +284,9 @@ class Icon(Gtk.EventBox):
         self.add(img)
         self.show_all()
 
+    def _openlink(self, widget, event, url):
+        if event.type == 5:
+            webbrowser.open(url)
 
 class ShowMoreTasks(Gtk.EventBox):
 
@@ -264,7 +297,7 @@ class ShowMoreTasks(Gtk.EventBox):
         self.label = Gtk.Label()
         if not last:
             self.label.set_text(
-                "Show more (+25) tasks!\n<i>-The application may work slowly</i>-\n(Double click)")
+                "Show more (+50) tasks!\n<i>-The application may work slowly</i>-\n(Double click)")
             self.label.set_use_markup(True)
             self.label.set_justify(Gtk.Justification.CENTER)
             self._id = self.connect("button-press-event", self.button_press)
