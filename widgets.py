@@ -6,6 +6,9 @@ gi.require_version('Gtk', '3.0')
 
 from gi.repository import Gio
 from gi.repository import Gtk
+from gi.repository import Gdk
+from gi.repository import GdkPixbuf
+
 
 organizations = {
     5382353857806336: "Apertium",
@@ -26,6 +29,14 @@ organizations = {
     5385807011512320: "Wikimedia",
     4718815233441792: "Zulip"
 }
+
+
+TAGS = {1: ["img/code.svg", "Code"],
+        2: ["img/userinterface.svg", "User Interface"],
+        3: ["img/doc.svg", "Documentation / Training"],
+        4: ["img/qa.svg", "Quality Assurance"],
+        5: ["img/outreach.svg", "Outearch / Research"]
+        }
 
 
 class WindowWithHeader(Gtk.Window):
@@ -103,13 +114,34 @@ class TasksList(Gtk.ListBox):
 
     def __init__(self):
         Gtk.ListBox.__init__(self)
+        self.limit = 0
+        self.total_tasks = 0
+        self.showed_tasks = []
+        self.add_tasks()
 
+    def add_tasks(self):
         f = open("tasks.json", "r")
         tasks = json.load(f)['results']
         f.close()
+        self.limit += 25
+        self.total_tasks = len(tasks)
 
         for task in tasks:
+            if task in self.showed_tasks:
+                continue
+
+            if len(self.showed_tasks) > self.limit:
+                if len(self.showed_tasks) < self.total_tasks:
+                    widget = ShowMoreTasks(self)
+                self.add(widget)
+                break
+
             self.add(TaskInterface(task))
+            self.showed_tasks.append(task)
+
+        if len(self.showed_tasks) == self.total_tasks:
+            widget = ShowMoreTasks(self, True)
+            self.add(widget)
 
 
 class TaskInterface(Gtk.Box):
@@ -141,26 +173,22 @@ class TaskInterface(Gtk.Box):
 
         task_description_expander.add(task_description)
 
-        self.pack_start(organization_label, False, False, 0)
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        header.pack_start(organization_label, False, False, 0)
+        header.pack_end(
+            Icon(
+                days=test_task["time_to_complete_in_days"]),
+            False,
+            False,
+            5)
+
+        for cat in test_task["categories"]:
+            header.pack_end(Icon(category=cat), False, False, 5)
+
+        self.pack_start(header, False, False, 0)
         self.pack_start(task_name, False, False, 0)
         self.pack_end(task_description_expander, True, True, 10)
 
-        """
-        button2 = Gtk.Button(label="Button 2")
-        button3 = Gtk.Label(label=test_task["name"])
-        button4 = Gtk.Button(label=organizations[test_task["organization_id"]])
-        button5 = Gtk.Button(label="Button 5")
-        button6 = Gtk.Button(label="Button 6")
-
-        self.add(button1)
-        self.attach(button2, 1, 0, 2, 1)
-        self.attach_next_to(button3, button1, Gtk.PositionType.BOTTOM, 1, 2)
-        self.attach_next_to(button4, button3, Gtk.PositionType.RIGHT, 2, 1)
-        self.attach(button5, 1, 2, 1, 1)
-        self.attach_next_to(button6, button5, Gtk.PositionType.RIGHT, 1, 1)
-        """
-
-        self.set_size_request(-1, -1)
         self.show_all()
 
 
@@ -172,3 +200,58 @@ class ScrolledWindow(Gtk.ScrolledWindow):
         self.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         self.add_with_viewport(widget)
         self.show_all()
+
+
+class Icon(Gtk.EventBox):
+
+    def __init__(self, category=None, scale=24, days=0):
+        Gtk.EventBox.__init__(self)
+
+        img = Gtk.Image()
+        if category:
+            path = TAGS[category][0]
+            Tooltip(self, TAGS[category][1])
+        elif days > 1:
+            path = "img/time.svg"
+            Tooltip(self, "%d days" % days)
+        else:
+            return "Error."
+
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            path, scale, scale, True)
+        img.set_from_pixbuf(pixbuf)
+        self.add(img)
+        self.show_all()
+
+
+class ShowMoreTasks(Gtk.EventBox):
+
+    def __init__(self, tasks_list, last=False):
+        Gtk.EventBox.__init__(self)
+        self.tasks_list = tasks_list
+
+        self.label = Gtk.Label()
+        if not last:
+            self.label.set_text(
+                "Show more (+25) tasks!\n<i>-The application may work slowly</i>-\n(Double click)")
+            self.label.set_use_markup(True)
+            self.label.set_justify(Gtk.Justification.CENTER)
+            self._id = self.connect("button-press-event", self.button_press)
+
+        if last:
+            self.label.set_text("End of the list. :(")
+            self.set_sensitive(False)
+
+        self.add(self.label)
+        self.show_all()
+
+    def button_press(self, widget, event):
+        if event.type == 5:
+            self.disconnect(self._id)
+            self.label.set_text(
+                "%d/%d" %
+                (len(
+                    self.tasks_list.showed_tasks),
+                    self.tasks_list.total_tasks))
+            self.set_sensitive(False)
+            self.tasks_list.add_tasks()
