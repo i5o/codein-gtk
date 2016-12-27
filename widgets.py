@@ -152,8 +152,8 @@ class TaskInterface(Gtk.Box):
 
         organization_label = Gtk.Label()
         organization_label.set_text("<b>%s</b>" %
-            organizations[
-                test_task["organization_id"]].upper())
+                                    organizations[
+                                        test_task["organization_id"]].upper())
         organization_label.set_use_markup(True)
         organization_label.set_size_request(400, 30)
         organization_label.set_xalign(0)
@@ -287,6 +287,7 @@ class Icon(Gtk.EventBox):
     def _openlink(self, widget, event, url):
         if event.type == 5:
             webbrowser.open(url)
+
 
 class ShowMoreTasks(Gtk.EventBox):
 
