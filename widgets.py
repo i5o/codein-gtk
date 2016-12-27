@@ -9,6 +9,7 @@ from gi.repository import Gio
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
+from gi.repository import GObject
 
 
 organizations = {
@@ -118,12 +119,22 @@ class TasksList(Gtk.ListBox):
         self.limit = 0
         self.total_tasks = 0
         self.showed_tasks = []
+        self.filtered_tasks = []
         self.add_tasks()
+
+    def clean_tasks(self):
+        for task in self.get_children():
+            self.remove(task)
+
+        self.showed_tasks = []
+        self.filtered_tasks = []
+        self.limit = 0
 
     def add_tasks(self):
         f = open("tasks.json", "r")
         tasks = json.load(f)['results']
         f.close()
+
         self.limit += 50
         self.total_tasks = len(tasks)
 
@@ -134,7 +145,7 @@ class TasksList(Gtk.ListBox):
             if len(self.showed_tasks) > self.limit:
                 if len(self.showed_tasks) < self.total_tasks:
                     widget = ShowMoreTasks(self)
-                self.add(widget)
+                    self.add(widget)
                 break
 
             self.add(TaskInterface(task))
@@ -143,6 +154,21 @@ class TasksList(Gtk.ListBox):
         if len(self.showed_tasks) == self.total_tasks:
             widget = ShowMoreTasks(self, True)
             self.add(widget)
+
+    def filter(self, text):
+        for task_widget in self.get_children():
+            if not text:
+                task_widget.show()
+                continue
+
+            task = task_widget.get_children()[0]
+            if isinstance(task, ShowMoreTasks):
+                task_widget.hide()
+            elif isinstance(task, TaskInterface):
+                if text in task.task_name:
+                    task_widget.show()
+                else:
+                    task_widget.hide()
 
 
 class TaskInterface(Gtk.Box):
@@ -159,6 +185,8 @@ class TaskInterface(Gtk.Box):
         organization_label.set_xalign(0)
         organization_label.props.margin_left = 5
         organization_label.props.margin_top = 5
+
+        self.task_name = test_task["name"]
 
         task_name = Gtk.Label(test_task["name"])
         task_name.set_xalign(0)
@@ -242,9 +270,11 @@ class Icon(Gtk.EventBox):
         if category:
             path = TAGS[category][0]
             Tooltip(self, TAGS[category][1])
+
         elif days > 1:
             path = "img/time.svg"
             Tooltip(self, "%d days" % days)
+
         elif tags:
             path = "img/tags.svg"
             text = "Tags:\n"
@@ -255,9 +285,11 @@ class Icon(Gtk.EventBox):
                 text = text[:-1]
 
             Tooltip(self, text)
+
         elif beginner:
             path = "img/beginner.svg"
             Tooltip(self, "Beginner task")
+
         elif mentors:
             path = "img/mentors.svg"
             text = "Mentors:\n"
@@ -268,6 +300,7 @@ class Icon(Gtk.EventBox):
                 text = text[:-1]
 
             Tooltip(self, text)
+
         elif url:
             path = "img/link.svg"
             text = "External URL (double click to open):\n%s" % url
@@ -313,10 +346,53 @@ class ShowMoreTasks(Gtk.EventBox):
     def button_press(self, widget, event):
         if event.type == 5:
             self.disconnect(self._id)
-            self.label.set_text(
-                "%d/%d" %
-                (len(
-                    self.tasks_list.showed_tasks),
-                    self.tasks_list.total_tasks))
+            showed_tasks = len(self.tasks_list.showed_tasks)
+            self.label.set_text("%d/%d" %
+                                (showed_tasks, self.tasks_list.total_tasks))
             self.set_sensitive(False)
             self.tasks_list.add_tasks()
+
+
+class SearchButton(Gtk.ToggleButton):
+
+    def __init__(self, searchbar, tasks_list):
+        Gtk.ToggleButton.__init__(self)
+
+        self.searchbar = searchbar
+        self.tasks_list = tasks_list
+
+        icon = Gio.ThemedIcon(name="find")
+        image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.BUTTON)
+        Tooltip(self, "Search task")
+        self.add(image)
+
+        searchbar.connect('search-changed', self.search_changed)
+
+    def do_toggled(self):
+        self.searchbar.set_search_mode(self.get_active())
+        if not self.get_active():
+            self.tasks_list.filter(None)
+
+    def search_changed(self, widget, text):
+        self.tasks_list.filter(text)
+
+
+class SearchBar(Gtk.SearchBar):
+
+    __gsignals__ = {
+        'search-changed': (GObject.SIGNAL_RUN_FIRST,
+                           GObject.TYPE_NONE, (GObject.TYPE_STRING,))}
+
+    def __init__(self):
+        Gtk.SearchBar.__init__(self)
+
+        searchentry = Gtk.SearchEntry()
+        searchentry.set_placeholder_text("Search task, by title")
+        self.connect_entry(searchentry)
+        self.add(searchentry)
+
+        searchentry.set_size_request(1024, -1)
+        searchentry.connect("search-changed", self.search_changed)
+
+    def search_changed(self, widget):
+        self.emit('search-changed', widget.get_text())
